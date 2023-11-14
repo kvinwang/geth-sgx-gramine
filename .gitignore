@@ -8,3 +8,5 @@ attestate
 mbedtls
 go-ethereum/
 goleveldb/
+cruntime/
+dist/

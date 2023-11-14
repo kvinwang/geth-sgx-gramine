@@ -30,18 +30,51 @@ SRCDIR = go-ethereum
 
 GOMODCACHE = $(shell go env GOMODCACHE)
 PATCHED_GOLEVELDB = goleveldb
+GRAMINE_DIR ?= $(shell ./gramine-dir libs)
+GRAMINE_LIBOS ?= $(shell ./gramine-dir libos)
+GRAMINE_RUNTIME_DIR ?= $(shell ./gramine-dir runtime)
+RUNTIME_DIR = cruntime
+LIBOS_BASENAME ?= $(shell basename ${GRAMINE_LIBOS})
+LIBOS ?= ${RUNTIME_DIR}/${LIBOS_BASENAME}
+HOST_LIBC_DIR = /lib/x86_64-linux-gnu
+PREFIX ?= dist
 
 ifeq ($(DEBUG),1)
 GRAMINE_LOG_LEVEL = debug
 else
 GRAMINE_LOG_LEVEL = error
 endif
+BIN_NAME=geth
 
 .PHONY: all
 all: geth geth.manifest
 ifeq ($(SGX),1)
 all: geth_init geth.manifest.sgx geth.sig
 endif
+
+.PHONY: all
+dist: ${LIBOS} all
+	mkdir -p ${PREFIX}/data
+	cp -rfL ${RUNTIME_DIR} ${PREFIX}/
+	cp ${BIN_NAME}.manifest ${PREFIX}/
+	cp ${BIN_NAME}.manifest.sgx ${PREFIX}/
+	cp ${BIN_NAME}.sig ${PREFIX}/
+	cp gramine-sgx ${PREFIX}/
+	cp geth ${PREFIX}/
+	cp geth_init ${PREFIX}/
+	cp geth.args ${PREFIX}/
+
+
+${LIBOS}:
+	mkdir -p ${RUNTIME_DIR}
+	# rsync -r --no-links ${GRAMINE_RUNTIME_DIR}/ ${RUNTIME_DIR}/lib
+	rsync -ravL ${GRAMINE_RUNTIME_DIR}/ ${RUNTIME_DIR}/lib
+	cp -rfL ${HOST_LIBC_DIR}/libgcc_s.so.1 ${RUNTIME_DIR}/lib/
+	cp -rfL ${HOST_LIBC_DIR}/libstdc++.so.6 ${RUNTIME_DIR}/lib/
+ifeq ($(SGX),1)
+	cp -rfL ${GRAMINE_DIR}/sgx ${RUNTIME_DIR}/
+endif
+	cp -rfL ${GRAMINE_LIBOS} ${RUNTIME_DIR}/
 
 ############################## GETH ARGUMENTS #################################
 
@@ -175,6 +208,8 @@ ISVSVN		?= 0
 
 geth.manifest: geth.manifest.template geth.args
 	gramine-manifest \
+		-Dlibdir=${RUNTIME_DIR}/lib/ \
+		-Dlibos=${LIBOS} \
 		-Dlog_level=$(GRAMINE_LOG_LEVEL) \
 		-Darch_libdir=$(ARCH_LIBDIR) \
 		-Dentrypoint="./geth_init" \

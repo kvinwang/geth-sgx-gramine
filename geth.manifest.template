@@ -4,7 +4,7 @@
 
 # PAL entrypoint (points to the LibOS layer library of Gramine). There is
 # currently only one implementation, so it is always set to libsysdb.so.
-loader.entrypoint = "file:{{ gramine.libos }}"
+loader.entrypoint = "file:{{ libos }}"
 
 # Entrypoint binary which Gramine invokes.
 libos.entrypoint = "{{ entrypoint }}"
@@ -51,13 +51,10 @@ sys.enable_sigterm_injection = true
 fs.mounts = [
   # Mount on-host directory to Gramine glibc/runtime libraries (in 'uri') into
   # in-Gramine visible directory /lib (in 'path').
-  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
-
-  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
-  { path = "/usr", uri = "file:/usr" },
+  { path = "/lib", uri = "file:{{ libdir }}" },
   { path = "/etc", uri = "file:/etc" },
   { type = "tmpfs", path = "/root/.ethereum" },
-  { path = "/data/", uri = "file:data/" },
+  { path = "/data", uri = "file:./data" },
   { type = "tmpfs", path = "/tmp" },
 ]
 
@@ -98,13 +95,12 @@ sgx.isvsvn    = {{ isvsvn }}
 # that this happens on the deployment machine.
 
 sgx.trusted_files = [
-  "file:{{ gramine.libos }}",
+  "file:{{ libos }}",
+  "file:{{ libdir }}",
   "file:{{ entrypoint }}",
   "file:{{ geth_bin }}",
-  "file:{{ gramine.runtimedir() }}/",
   "file:{{ arch_libdir }}/",
   "file:geth.args",
-  "file:/usr/{{ arch_libdir }}/",
   "file:/etc/ssl/certs/ca-certificates.crt",
 ]
 
